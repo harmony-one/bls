@@ -1,8 +1,9 @@
 package bls
 
 /*
+#cgo pkg-config: libcrypto
 #cgo CFLAGS:-DMCLBN_FP_UNIT_SIZE=6 -DMCLBN_FR_UNIT_SIZE=4 -DBLS_SWAP_G
-#cgo LDFLAGS:-lbls384_256 -lcrypto -lgmp -lgmpxx -lstdc++
+#cgo LDFLAGS:-lbls384_256 -lmcl -lcrypto -lgmp -lgmpxx -lstdc++
 typedef unsigned int (*ReadRandFunc)(void *, void *, unsigned int);
 int wrapReadRandCgo(void *self, void *buf, unsigned int n);
 #include <bls/bls.h>
