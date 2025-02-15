@@ -4,7 +4,7 @@ ifeq ($(findstring MINGW64,$(shell uname -s)),MINGW64)
 else
   PWD=$(shell pwd)
 endif
-MCL_DIR?=$(PWD)/mcl
+MCL_DIR?=$(PWD)/../mcl
 include $(MCL_DIR)/common.mk
 LIB_DIR=lib
 OBJ_DIR=obj
@@ -95,10 +95,6 @@ $(EXE_DIR)/%512_test.exe: $(OBJ_DIR)/%512_test.o $(BLS512_LIB) $(MCL_LIB)
 $(EXE_DIR)/%256_test.exe: $(OBJ_DIR)/%256_test.o $(BLS256_LIB) $(MCL_LIB)
 	$(PRE)$(CXX) $< -o $@ $(BLS256_LIB) -L$(MCL_DIR)/lib -lmcl $(LDFLAGS)
 
-# sample exe links libbls384_256.a
-$(EXE_DIR)/%.exe: $(OBJ_DIR)/%.o $(BLS384_256_LIB) $(MCL_LIB)
-	$(PRE)$(CXX) $< -o $@ $(BLS384_256_LIB) -L$(MCL_DIR)/lib -lmcl $(LDFLAGS)
-ifeq ($(OS),mac)
 # sample exe links libbls256.a
 $(EXE_DIR)/%.exe: $(OBJ_DIR)/%.o $(BLS256_LIB) $(MCL_LIB)
 	$(PRE)$(CXX) $< -o $@ $(BLS256_LIB) -L$(MCL_DIR)/lib -lmcl $(LDFLAGS)
