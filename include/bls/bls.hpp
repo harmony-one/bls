@@ -12,6 +12,7 @@
 #include <string>
 #include <iosfwd>
 #include <stdint.h>
+#include <memory.h>
 
 namespace bls {
 
@@ -72,7 +73,19 @@ namespace local {
 	r = 0x2523648240000001ba344d8000000007ff9f800000000010a10000000000000d
 	sizeof(uint64_t) * keySize byte
 */
-const size_t keySize = MCLBN_FP_UNIT_SIZE;
+const size_t keySize = MCLBN_FR_UNIT_SIZE;
+
+inline void convertArray(uint8_t *dst, const uint64_t *src, size_t n)
+{
+	for (size_t i = 0; i < n; i++) {
+		uint64_t x = src[i];
+		for (size_t j = 0; j < 8; j++) {
+			*dst++ = uint8_t(x);
+			x >>= 8;
+		}
+	}
+}
+
 }
 
 class SecretKey;
@@ -91,6 +104,7 @@ class Id {
 	friend class SecretKey;
 	friend class Signature;
 public:
+	const blsId *getPtr() const { return &self_; }
 	Id(unsigned int id = 0)
 	{
 		blsIdSetInt(&self_, id);
@@ -120,6 +134,18 @@ public:
 		if (n == 0) throw std::runtime_error("mclBnFr_getStr");
 		str.resize(n);
 	}
+	std::string getStr(int ioMode = 0) const
+	{
+		std::string str;
+		getStr(str, ioMode);
+		return str;
+	}
+	std::string serializeToHexStr() const { return getStr(2048); }
+	void deserializeHexStr(const std::string& str)
+	{
+		setStr(str, 2048);
+	}
+	void clear() { memset(&self_, 0, sizeof(self_)); }
 	void setStr(const std::string& str, int ioMode = 0)
 	{
 		int ret = mclBnFr_setStr(&self_.v, str.c_str(), str.size(), ioMode);
@@ -135,10 +161,13 @@ public:
 	*/
 	void set(const uint64_t *p)
 	{
-		setLittleEndian(p, local::keySize * sizeof(uint64_t));
+		const size_t n = blsGetFrByteSize() / sizeof(uint64_t);
+		uint8_t x[sizeof(*this)];
+		local::convertArray(x, p, n);
+		setLittleEndian(x, n * sizeof(uint64_t));
 	}
-	// bufSize is truncted/zero extended to keySize
-	void setLittleEndian(const void *buf, size_t bufSize)
+	// bufSize is truncated/zero extended to keySize
+	void setLittleEndian(const uint8_t *buf, size_t bufSize)
 	{
 		mclBnFr_setLittleEndian(&self_.v, buf, bufSize);
 	}
@@ -150,6 +179,7 @@ public:
 class SecretKey {
 	blsSecretKey self_;
 public:
+	const blsSecretKey *getPtr() const { return &self_; }
 	bool operator==(const SecretKey& rhs) const
 	{
 		return blsSecretKeyIsEqual(&self_, &rhs.self_) == 1;
@@ -175,6 +205,18 @@ public:
 		if (n == 0) throw std::runtime_error("mclBnFr_getStr");
 		str.resize(n);
 	}
+	std::string getStr(int ioMode = 0) const
+	{
+		std::string str;
+		getStr(str, ioMode);
+		return str;
+	}
+	std::string serializeToHexStr() const { return getStr(2048); }
+	void deserializeHexStr(const std::string& str)
+	{
+		setStr(str, 2048);
+	}
+	void clear() { memset(&self_, 0, sizeof(self_)); }
 	void setStr(const std::string& str, int ioMode = 0)
 	{
 		int ret = mclBnFr_setStr(&self_.v, str.c_str(), str.size(), ioMode);
@@ -194,10 +236,13 @@ public:
 	*/
 	void set(const uint64_t *p)
 	{
-		setLittleEndian(p, local::keySize * sizeof(uint64_t));
+		const size_t n = blsGetFrByteSize() / sizeof(uint64_t);
+		uint8_t x[sizeof(*this)];
+		local::convertArray(x, p, n);
+		setLittleEndian(x, n * sizeof(uint64_t));
 	}
 	// bufSize is truncted/zero extended to keySize
-	void setLittleEndian(const void *buf, size_t bufSize)
+	void setLittleEndian(const uint8_t *buf, size_t bufSize)
 	{
 		mclBnFr_setLittleEndian(&self_.v, buf, bufSize);
 	}
@@ -282,6 +327,7 @@ class PublicKey {
 	friend class SecretKey;
 	friend class Signature;
 public:
+	const blsPublicKey *getPtr() const { return &self_; }
 	bool operator==(const PublicKey& rhs) const
 	{
 		return blsPublicKeyIsEqual(&self_, &rhs.self_) == 1;
@@ -300,7 +346,7 @@ public:
 		if (str != "0") {
 			// 1 <x.a> <x.b> <y.a> <y.b>
 			std::string t;
-#ifdef BLS_SWAP_G
+#ifdef BLS_ETH
 			const int elemNum = 2;
 #else
 			const int elemNum = 4;
@@ -317,7 +363,7 @@ public:
 	void getStr(std::string& str, int ioMode = 0) const
 	{
 		str.resize(1024);
-#ifdef BLS_SWAP_G
+#ifdef BLS_ETH
 		size_t n = mclBnG1_getStr(&str[0], str.size(), &self_.v, ioMode);
 #else
 		size_t n = mclBnG2_getStr(&str[0], str.size(), &self_.v, ioMode);
@@ -325,9 +371,21 @@ public:
 		if (n == 0) throw std::runtime_error("PublicKey:getStr");
 		str.resize(n);
 	}
+	std::string getStr(int ioMode = 0) const
+	{
+		std::string str;
+		getStr(str, ioMode);
+		return str;
+	}
+	std::string serializeToHexStr() const { return getStr(2048); }
+	void deserializeHexStr(const std::string& str)
+	{
+		setStr(str, 2048);
+	}
+	void clear() { memset(&self_, 0, sizeof(self_)); }
 	void setStr(const std::string& str, int ioMode = 0)
 	{
-#ifdef BLS_SWAP_G
+#ifdef BLS_ETH
 		int ret = mclBnG1_setStr(&self_.v, str.c_str(), str.size(), ioMode);
 #else
 		int ret = mclBnG2_setStr(&self_.v, str.c_str(), str.size(), ioMode);
@@ -377,6 +435,8 @@ class Signature {
 	blsSignature self_;
 	friend class SecretKey;
 public:
+	const blsSignature *getPtr() const { return &self_; }
+	blsSignature *getPtr() { return &self_; }
 	bool operator==(const Signature& rhs) const
 	{
 		return blsSignatureIsEqual(&self_, &rhs.self_) == 1;
@@ -395,7 +455,7 @@ public:
 		if (str != "0") {
 			// 1 <x> <y>
 			std::string t;
-#ifdef BLS_SWAP_G
+#ifdef BLS_ETH
 			const int elemNum = 4;
 #else
 			const int elemNum = 2;
@@ -412,7 +472,7 @@ public:
 	void getStr(std::string& str, int ioMode = 0) const
 	{
 		str.resize(1024);
-#ifdef BLS_SWAP_G
+#ifdef BLS_ETH
 		size_t n = mclBnG2_getStr(&str[0], str.size(), &self_.v, ioMode);
 #else
 		size_t n = mclBnG1_getStr(&str[0], str.size(), &self_.v, ioMode);
@@ -420,9 +480,21 @@ public:
 		if (n == 0) throw std::runtime_error("Signature:tgetStr");
 		str.resize(n);
 	}
+	std::string getStr(int ioMode = 0) const
+	{
+		std::string str;
+		getStr(str, ioMode);
+		return str;
+	}
+	std::string serializeToHexStr() const { return getStr(2048); }
+	void deserializeHexStr(const std::string& str)
+	{
+		setStr(str, 2048);
+	}
+	void clear() { memset(&self_, 0, sizeof(self_)); }
 	void setStr(const std::string& str, int ioMode = 0)
 	{
-#ifdef BLS_SWAP_G
+#ifdef BLS_ETH
 		int ret = mclBnG2_setStr(&self_.v, str.c_str(), str.size(), ioMode);
 #else
 		int ret = mclBnG1_setStr(&self_.v, str.c_str(), str.size(), ioMode);
